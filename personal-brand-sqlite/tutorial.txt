@@ -1,0 +1,493 @@
+Tentu! Kita akan ubah dari Firebase ke SQLite (lebih ringan, lokal, tanpa koneksi internet), dan gunakan Deno atau Node.js + SQLite3 untuk mengelola data lokal. 
+
+Namun, karena kamu ingin paling ringan, kita akan gunakan: 
+✅ Pilihan Terbaik: SQLite + Node.js (tanpa server eksternal) 
+
+    Data disimpan di file lokal (.db)
+    Tidak butuh internet
+    Tidak perlu install database besar
+    Cocok untuk proyek kecil, personal branding
+     
+
+🧩 Tujuan 
+
+    Ubah dari Firebase ke SQLite lokal
+    Gunakan Node.js + sqlite3 (modul ringan)
+    Data tersimpan di file branding.db
+    Bisa diakses oleh HTML/JS (dengan backend)
+     
+
+🚀 Langkah-Langkah Lengkap 
+🔧 1. Prasyarat 
+
+Pastikan kamu punya: 
+
+    Node.js (versi 16+)
+    npm (sudah otomatis terinstall)
+    Text Editor (VS Code)
+    Terminal / CMD
+     
+
+    ✅ Install Node.js: https://nodejs.org  
+
+ 2. Buat Folder Proyek 
+bash
+mkdir personal-brand-sqlite
+cd personal-brand-sqlite
+ 
+📦 3. Inisialisasi Node.js 
+bash
+npm init -y
+ 
+📦 4. Install SQLite3 
+bash
+npm install sqlite3
+SQLite3 adalah modul Node.js yang memungkinkan kamu mengakses SQLite secara lokal.
+     
+📄 5. Buat File server.js
+js
+// server.js
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+// Buka database (akan dibuat jika belum ada)
+const dbPath = path.join(__dirname, 'branding.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database');
+  }
+});
+
+// Buat tabel jika belum ada
+db.run(`
+  CREATE TABLE IF NOT EXISTS branding (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    profileImage TEXT NOT NULL
+  )
+`, (err) => {
+  if (err) {
+    console.error('Error creating table:', err.message);
+  } else {
+    console.log('Table created or already exists');
+  }
+});
+
+// Tambahkan data default jika belum ada
+db.get("SELECT * FROM branding LIMIT 1", (err, row) => {
+  if (err) {
+    console.error(err.message);
+  } else if (!row) {
+    // Insert data default
+    db.run(`
+      INSERT INTO branding (name, title, description, profileImage)
+      VALUES (?, ?, ?, ?)
+    `, [
+      "SANTUSH DEB",
+      "Creative Designer & Developer",
+      "I help brands grow with impactful digital experiences.",
+      "https://via.placeholder.com/200"
+    ], (err) => {
+      if (err) {
+        console.error("Error inserting default data:", err.message);
+      } else {
+        console.log("Default data inserted");
+      }
+    });
+  }
+});
+
+// API untuk mengambil data
+const express = require('express');
+const app = express();
+const cors = require('cors');
+
+app.use(cors());
+app.use(express.json());
+
+// Endpoint untuk mendapatkan data
+app.get('/api/personal-brand', (req, res) => {
+  db.get("SELECT * FROM branding WHERE id = 1", (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json(row);
+    }
+  });
+});
+
+// Endpoint untuk update data
+app.put('/api/personal-brand', (req, res) => {
+  const { name, title, description, profileImage } = req.body;
+  db.run(`
+    UPDATE branding SET
+      name = ?,
+      title = ?,
+      description = ?,
+      profileImage = ?
+    WHERE id = 1
+  `, [name, title, description, profileImage], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json({ message: "Data updated", changes: this.changes });
+    }
+  });
+});
+
+// Start server
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+📄 6. Buat File index.html
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Santush Deb - Personal Branding</title>
+  <style>
+    /* CSS dari sebelumnya */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9f9f9;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 30%;
+      background: #6e00ff;
+      color: white;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 10;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .logo span {
+      color: #fff;
+      background: #000;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+
+    .profile-img {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 20px 0;
+      border: 5px solid white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .contact-info {
+      margin-top: auto;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .social-links a {
+      color: white;
+      margin: 0 10px;
+      font-size: 18px;
+      transition: transform 0.3s;
+    }
+
+    .social-links a:hover {
+      transform: scale(1.2);
+    }
+
+    .main-content {
+      width: 70%;
+      background: white;
+      padding: 40px;
+      position: relative;
+      z-index: 5;
+      box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+    }
+
+    .header {
+      font-size: 28px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 10px;
+      border-bottom: 3px solid #6e00ff;
+      padding-bottom: 10px;
+      display: inline-block;
+    }
+
+    .title {
+      font-size: 18px;
+      color: #6e00ff;
+      margin-bottom: 15px;
+      font-weight: 500;
+    }
+
+    .description {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 25px;
+      line-height: 1.8;
+    }
+
+    .btn-container {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: #6e00ff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a00d4;
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #6e00ff;
+      color: #6e00ff;
+    }
+
+    .btn-outline:hover {
+      background: #6e00ff;
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+      }
+      .sidebar, .main-content {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">SANTUSH<span>DEB</span></div>
+      <img id="profileImg" class="profile-img" src="https://via.placeholder.com/200" alt="Profile Image" />
+      <div class="contact-info">
+        <p>san@deb.com</p>
+        <p>+123 456 7890</p>
+        <div class="social-links">
+          <a href="https://linkedin.com/in/santushdeb" target="_blank">🔗</a>
+          <a href="https://twitter.com/santushdeb" target="_blank">🐦</a>
+          <a href="https://github.com/santushdeb" target="_blank">🐙</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <h1 class="header" id="name">SANTUSH DEB</h1>
+      <p class="title" id="title">Creative Designer & Developer</p>
+      <p class="description" id="description">I help brands grow with impactful digital experiences. From design to development, I craft solutions that resonate.</p>
+      <div class="btn-container">
+        <a href="#portfolio" class="btn btn-primary">View Portfolio</a>
+        <a href="#contact" class="btn btn-outline">Contact Me</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Ambil data dari server lokal
+    fetch('http://localhost:3000/api/personal-brand')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("name").textContent = data.name;
+        document.getElementById("title").textContent = data.title;
+        document.getElementById("description").textContent = data.description;
+        document.getElementById("profileImg").src = data.profileImage;
+      })
+      .catch(err => {
+        console.error("Error fetching data:", err);
+        // Tampilkan data default
+        document.getElementById("name").textContent = "SANTUSH DEB";
+        document.getElementById("title").textContent = "Creative Designer & Developer";
+        document.getElementById("description").textContent = "I help brands grow with impactful digital experiences.";
+        document.getElementById("profileImg").src = "https://via.placeholder.com/200";
+      });
+  </script>
+</body>
+</html>
+
+🚀 7. Jalankan Server
+bash
+node server.js
+	"Output"
+Server running on http://localhost:3000
+Connected to SQLite database
+Table created or already exists
+Default data inserted
+
+🌐 8. Buka di Browser
+Buka: http://localhost:3000  
+Kamu akan melihat halaman personal branding dengan data dari SQLite. 
+
+📦 9. Data disimpan di file lokal
+File yang dibuat: 
+
+    branding.db → database lokal (di folder proyek)
+    server.js → server API
+    index.html → halaman utama
+     
+🔧 10. Cara Mengubah Data
+Kamu bisa mengubah data dengan: 
+
+     Buka server.js
+     Ubah data default di db.run(...) atau
+     Gunakan API untuk update:
+     
+
+📦 Update via API (misalnya dengan Postman atau curl) 
+bash
+curl -X PUT http://localhost:3000/api/personal-brand \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SANTUSH DEB",
+    "title": "Web Developer & Designer",
+    "description": "I build fast, clean, and responsive websites.",
+    "profileImage": "https://example.com/new-image.jpg"
+  }'
+
+Atau gunakan form HTML untuk edit (kita bisa tambahkan nanti). 
+
+📂 11. Struktur Folder Akhir
+personal-brand-sqlite/
+├── index.html
+├── server.js
+├── branding.db
+└── package.json
+
+🚫 Kekurangan 
+    Tidak bisa diakses dari browser langsung (butuh server)
+    Tidak bisa diakses dari banyak perangkat (kecuali diakses via localhost)
+    Tidak ada login admin (untuk edit, harus ubah kode)
+     
+🛠️ Solusi: Tambahkan Form Edit (Opsional)
+Buat edit.html:
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Personal Branding</title>
+</head>
+<body>
+  <h1>Edit Data</h1>
+  <form id="editForm">
+    <label>Name:</label>
+    <input type="text" id="name" value="SANTUSH DEB"><br>
+    <label>Title:</label>
+    <input type="text" id="title" value="Creative Designer & Developer"><br>
+    <label>Description:</label>
+    <textarea id="description">I help brands grow with impactful digital experiences.</textarea><br>
+    <label>Profile Image:</label>
+    <input type="text" id="profileImage" value="https://via.placeholder.com/200"><br>
+    <button type="submit">Update</button>
+  </form>
+
+  <script>
+    document.getElementById("editForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById("name").value,
+        title: document.getElementById("title").value,
+        description: document.getElementById("description").value,
+        profileImage: document.getElementById("profileImage").value
+      };
+
+      const res = await fetch('http://localhost:3000/api/personal-brand', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await res.json();
+      alert("Data updated: " + result.message);
+    });
+  </script>
+</body>
+</html>
+
+📦 Bonus: Gunakan Deno (Alternatif lebih ringan) 
+Jika kamu ingin tanpa npm, gunakan Deno + SQLite:
+bash
+deno run --allow-net --allow-read --allow-write server.ts
+
+✅ Kesimpulan 
+
+Kamu sekarang bisa: 
+
+    Jalankan personal branding dengan data lokal
+    Gunakan SQLite sebagai database
+    Tidak butuh internet, tidak butuh Firebase
+    Mudah diubah, ringan, dan lokal
+     
+
+📦 Bisa Saya Kirimkan? 
+
+Jika kamu ingin, saya bisa kirimkan: 
+
+    Folder personal-brand-sqlite siap pakai
+    File branding.db (dengan data default)
+    File edit.html untuk edit langsung
+     
+
+Cukup tulis:
+👉 "Bisa kirimkan file lengkapnya?" 
+
+Saya akan kirimkan link download atau GitHub repo. 
